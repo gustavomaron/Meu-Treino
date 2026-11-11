@@ -23,6 +23,29 @@ export function pickWorkout(s, date = new Date()) {
   );
 }
 
+export function getDailySession(state, workoutId, date = new Date()) {
+  if (!workoutId) return null;
+  const today = localDate(date);
+  let latest = null,
+    latestTime = -Infinity;
+  for (const session of state.history) {
+    if (session.workoutId !== workoutId || session.demo === true) continue;
+    const finished = Date.parse(session.finishedAt);
+    const hasFinished = Number.isFinite(finished);
+    const day = hasFinished ? localDate(new Date(finished)) : session.date;
+    if (day !== today) continue;
+    const time = hasFinished
+      ? finished
+      : Number.isFinite(session.startedAt)
+        ? session.startedAt
+        : 0;
+    if (time >= latestTime) {
+      latest = session;
+      latestTime = time;
+    }
+  }
+  return latest;
+}
 export function startSession(workout, now = Date.now()) {
   return {
     id: uid(),

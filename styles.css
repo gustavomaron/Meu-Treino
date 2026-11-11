@@ -628,6 +628,28 @@ strong {
   height: 170px;
   stroke-width: 1;
 }
+.today-completed {
+  border: 1px solid #91b861;
+}
+.today-completed .redo-link {
+  color: #d4e0df;
+  margin-top: 10px;
+  width: 100%;
+  justify-content: center;
+}
+.workout-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.workout-status svg {
+  width: 18px;
+  height: 18px;
+}
 .weekly-card {
   display: flex;
   flex-direction: column;

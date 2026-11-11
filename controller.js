@@ -13,7 +13,8 @@ let state,
   filters = {},
   period = 90,
   metric = "weight",
-  focusReturn;
+  focusReturn,
+  renderedDay = C.localDate();
 try {
   const raw = localStorage.getItem(C.STORAGE_KEY);
   state = raw
@@ -65,6 +66,7 @@ function commit(fn, redraw = true) {
   return true;
 }
 function render() {
+  renderedDay = C.localDate();
   document.body.classList.toggle("dark", state.profile.dark);
   const screens = {
     home: () => U.home(state),
@@ -200,7 +202,7 @@ function workoutForm(id) {
     }
   };
 }
-function start(id) {
+function start(id, { allowRedo = false } = {}) {
   if (state.active) {
     if (state.active.workoutId !== id)
       toast(
@@ -212,7 +214,18 @@ function start(id) {
   const w = state.workouts.find((w) => w.id === id);
   if (!w?.exercises.length)
     return toast("Adicione ao menos um exercício ao treino.", true);
-  if (commit((s) => (s.active = C.startSession(w)), false)) go("session");
+  if (!allowRedo && C.getDailySession(state, id)) {
+    confirm(
+      "Refazer treino de hoje?",
+      "Você já finalizou este treino hoje. Uma nova sessão será criada, sem alterar o histórico anterior.",
+      "Sim, refazer treino",
+      () => start(id, { allowRedo: true }),
+    );
+    return false;
+  }
+  if (!commit((s) => (s.active = C.startSession(w)), false)) return false;
+  go("session");
+  return true;
 }
 function unlockAudio() {
   try {
@@ -251,6 +264,15 @@ function beep() {
   } catch {}
 }
 function tick() {
+  // Refresh daily cards after midnight without resetting an open form.
+  if (
+    !modal.open &&
+    ["home", "workouts"].includes(page) &&
+    C.localDate() !== renderedDay
+  ) {
+    render();
+    return;
+  }
   const a = state.active;
   if (!a) return;
   if ($("#session-clock"))
@@ -414,6 +436,7 @@ document.addEventListener("click", async (e) => {
             commit((s) => (s.workouts = s.workouts.filter((w) => w.id !== id))),
         );
         break;
+      case "redo":
       case "start":
         start(id);
         break;

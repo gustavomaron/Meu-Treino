@@ -4,6 +4,7 @@ import {
   toDisplay,
   localDate,
   pickWorkout,
+  getDailySession,
 } from "./core.js";
 export const esc = (v) =>
   String(v ?? "").replace(
@@ -168,6 +169,27 @@ export function goalCard(g, s, compact = false) {
     return `<div class="card goal-summary"><div class="row"><div class="goal-icon">${icon("target")}</div><div class="grow"><h3>${esc(g.title)}</h3><p class="small muted">${esc(catNames[g.category])}</p></div><strong class="small">${n}%</strong></div>${progress(n)}<div class="row between goal-footer"><span><strong>${value(g.current)}</strong> de ${value(g.target)} ${unit}</span><span>${g.done ? "Concluída" : g.deadline ? "Até " + dateFmt(g.deadline) : "Um treino de cada vez."}</span></div></div>`;
   return `<article class="card goal-card"><div class="row between"><span class="badge">${g.done ? "Concluída" : esc(catNames[g.category])}</span><button type="button" class="icon-btn" data-action="edit-goal" data-id="${esc(g.id)}" aria-label="Editar meta ${esc(g.title)}">${icon("edit")}</button></div><h3>${esc(g.title)}</h3><p class="small muted">${g.deadline ? "Prazo: " + dateFmt(g.deadline, { day: "2-digit", month: "long", year: "numeric" }) : "Sem pressa. Com consistência."}</p>${progress(n)}<div class="row between goal-values"><span>${value(g.current)} / ${value(g.target)} ${unit}</span><strong>${n}%</strong></div><p class="helper">Inicial: ${value(g.initial)} ${unit} · Atualização manual</p><div class="row between actions">${btn(g.done ? "Reabrir" : "Concluir", "complete-goal", "check", "quiet", `data-id="${esc(g.id)}"`)}<button class="icon-btn" type="button" data-action="delete-goal" data-id="${esc(g.id)}" aria-label="Excluir meta ${esc(g.title)}">${icon("trash")}</button></div></article>`;
 }
+function dailyWorkoutLabel(record) {
+  return record.exercises.length > 0 && record.exercises.every((e) => e.done)
+    ? "Concluído hoje"
+    : "Finalizado hoje";
+}
+function completedTodayCard(record, plan) {
+  const total = record.exercises.length;
+  const done = record.exercises.filter((e) => e.done).length;
+  const percent = total ? Math.round((done / total) * 100) : 0;
+  const complete = total > 0 && done === total;
+  return `<section class="today-card today-completed"><div class="row between"><span class="eyebrow">Seu treino de hoje</span><span class="badge">${icon(complete ? "check" : "history")}${dailyWorkoutLabel(record)}</span></div><h2>${esc(plan.name)}</h2><p class="today-sub">${esc(plan.group || record.group || "Seu plano de exercícios")}</p><div class="today-facts"><span>${icon("dumbbell")}${done} de ${total} exercícios</span><span>${icon("timer")}${duration(record.duration)}</span></div><div class="progress-label"><span>${complete ? "Treino do dia concluído. Bom trabalho!" : "Sessão parcial salva no histórico."}</span><strong>${percent}%</strong></div>${progress(percent)}${btn("Ver resumo", "history-detail", "history", "primary full", `data-id="${esc(record.id)}"`)}<button type="button" class="text-btn redo-link" data-action="redo" data-id="${esc(plan.id)}" ${!plan.exercises.length ? "disabled" : ""}>${icon("restart")}Refazer treino</button></section>`;
+}
+function workoutActions(s, w) {
+  const attrs = `data-id="${esc(w.id)}" ${!w.exercises.length ? "disabled" : ""}`;
+  if (s.active?.workoutId === w.id)
+    return btn("Continuar treino", "start", "play", "primary full", attrs);
+  const saved = getDailySession(s, w.id);
+  if (saved)
+    return `<p class="workout-status" role="status">${icon(saved.exercises.every((e) => e.done) ? "check" : "history")}${dailyWorkoutLabel(saved)}</p>${btn("Ver resumo", "history-detail", "history", "primary full", `data-id="${esc(saved.id)}"`)}${btn("Refazer treino", "redo", "restart", "quiet full", attrs)}`;
+  return btn("Começar treino", "start", "play", "primary full", attrs);
+}
 export function home(s) {
   const w = pickWorkout(s),
     a = s.active;
@@ -194,8 +216,10 @@ export function home(s) {
   const totalMinutes = Math.floor(
     s.history.reduce((acc, h) => acc + h.duration, 0) / 60,
   );
-  const today =
-    a || w
+  const savedToday = !a && w ? getDailySession(s, w.id, now) : null;
+  const today = savedToday
+    ? completedTodayCard(savedToday, w)
+    : a || w
       ? `<section class="today-card"><div class="training-art">${icon("dumbbell")}</div><div class="row between"><span class="eyebrow">${a ? "Treino em andamento" : "Seu treino de hoje"}</span><span class="badge">${icon(a ? "timer" : "calendar")}${a ? (a.paused ? "Pausado" : "Em andamento") : w.days.includes(now.getDay()) ? "Programado" : "Seu plano"}</span></div><h2>${esc(a?.name || w?.name)}</h2><p class="today-sub">${esc(a?.group || w?.group || "Seu plano de exercícios")}</p><div class="today-facts"><span>${icon("dumbbell")}${total} exercícios</span><span>${icon("timer")}${a ? duration(elapsed(a)) : "No seu ritmo"}</span></div>${total ? `<div class="progress-label"><span>${done} de ${total} exercícios concluídos</span><strong>${percent}%</strong></div>${progress(percent)}` : '<p class="today-sub mt mb">Adicione os exercícios antes de começar.</p>'}${btn(a ? "Continuar treino" : total ? "Começar treino" : "Adicionar exercícios", a ? "session" : total ? "start" : "edit-workout", total ? "play" : "plus", "primary", `data-id="${esc(a?.workoutId || w?.id)}"`)}</section>`
       : `<section class="today-card"><div class="training-art">${icon("dumbbell")}</div><span class="eyebrow">Vamos começar</span><h2>Seu primeiro treino</h2><p class="today-sub">Crie seu treino e adicione os exercícios orientados pelo seu professor.</p><p class="today-sub mt mb small">Depois, registre suas séries, repetições e cargas por aqui.</p>${btn("Criar meu treino", "new-workout", "plus", "primary")}</section>`;
   return `${head(s.profile.name ? `Olá, ${esc(s.profile.name)}. Vamos nessa?` : "Bom ter você por aqui", "Seu próximo passo começa aqui.", "Não precisa ser perfeito. Só precisa ser o seu melhor de hoje.", `<div class="date-label">${icon("calendar")}${now.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>`)}
@@ -230,7 +254,7 @@ export function workouts(s) {
                 )
                 .join(
                   "",
-                )}${w.exercises.length > 4 ? `<li>+ ${w.exercises.length - 4} exercícios</li>` : ""}${!w.exercises.length ? "<li>Adicione exercícios para começar.</li>" : ""}</ul>${w.notes ? `<p class="helper mb">${esc(w.notes)}</p>` : ""}<div class="actions">${btn(s.active?.workoutId === w.id ? "Continuar treino" : "Começar treino", "start", "play", "primary full", `data-id="${esc(w.id)}" ${!w.exercises.length ? "disabled" : ""}`)}</div></article>`,
+                )}${w.exercises.length > 4 ? `<li>+ ${w.exercises.length - 4} exercícios</li>` : ""}${!w.exercises.length ? "<li>Adicione exercícios para começar.</li>" : ""}</ul>${w.notes ? `<p class="helper mb">${esc(w.notes)}</p>` : ""}<div class="actions">${workoutActions(s, w)}</div></article>`,
           )
           .join("")
       : empty(
