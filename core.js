@@ -281,117 +281,73 @@ export function uid() {
 }
 export const localDate = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-export function createState(now = new Date()) {
-  const ex = (name, sets, reps, load, rest = 60) => ({
-    id: uid(),
-    name,
-    sets,
-    reps,
-    load,
-    rest,
-    notes: "",
+// Compatibility only: identify untouched legacy plans by their original
+// metadata AND a linked, identical demonstration snapshot. Never seed data.
+export function prepareState(source) {
+  const s = structuredClone(source);
+  const demoSessions = s.history.filter((h) => h.demo === true);
+  const protectedPlans = new Set(
+    s.history.filter((h) => h.demo !== true).map((h) => h.workoutId),
+  );
+  if (s.active) protectedPlans.add(s.active.workoutId);
+  const legacyMetadata = [
+    [
+      "Treino A",
+      "Peito e Tríceps",
+      [1, 4],
+      "Priorize a técnica e respeite seu ritmo.",
+    ],
+    [
+      "Treino B",
+      "Costas e Bíceps",
+      [2, 5],
+      "Movimentos controlados em todas as repetições.",
+    ],
+    ["Treino C", "Pernas e Ombros", [3, 6], "Aqueça antes de começar."],
+  ].map((value) => JSON.stringify(value));
+  const exercisePlan = (exercises) =>
+    exercises.map((e) => [
+      e.id,
+      e.name,
+      e.sets,
+      e.reps,
+      e.load,
+      e.rest,
+      e.notes,
+    ]);
+  s.workouts = s.workouts.filter((w) => {
+    if (protectedPlans.has(w.id)) return true;
+    if (w.demo === true) return false;
+    if (
+      s.demo !== true ||
+      !legacyMetadata.includes(
+        JSON.stringify([w.name, w.group, w.days, w.notes]),
+      )
+    )
+      return true;
+    return !demoSessions.some(
+      (h) =>
+        h.workoutId === w.id &&
+        h.name === w.name &&
+        h.group === w.group &&
+        JSON.stringify(exercisePlan(h.exercises)) ===
+          JSON.stringify(exercisePlan(w.exercises)),
+    );
   });
-  const workouts = [
-    {
-      id: uid(),
-      name: "Treino A",
-      group: "Peito e Tríceps",
-      days: [1, 4],
-      notes: "Priorize a técnica e respeite seu ritmo.",
-      exercises: [
-        ex("Supino reto com barra", 4, 12, 20, 90),
-        ex("Supino inclinado com halteres", 3, 12, 12, 90),
-        ex("Crucifixo na máquina", 3, 15, 25),
-        ex("Tríceps na polia", 3, 12, 20),
-        ex("Tríceps francês", 3, 12, 10),
-        ex("Prancha abdominal", 3, 1, 0, 30),
-      ],
-    },
-    {
-      id: uid(),
-      name: "Treino B",
-      group: "Costas e Bíceps",
-      days: [2, 5],
-      notes: "Movimentos controlados em todas as repetições.",
-      exercises: [
-        ex("Puxada frontal", 4, 12, 30, 90),
-        ex("Remada baixa", 3, 12, 25),
-        ex("Remada unilateral", 3, 12, 14),
-        ex("Rosca direta", 3, 12, 12),
-        ex("Rosca martelo", 3, 12, 8),
-      ],
-    },
-    {
-      id: uid(),
-      name: "Treino C",
-      group: "Pernas e Ombros",
-      days: [3, 6],
-      notes: "Aqueça antes de começar.",
-      exercises: [
-        ex("Agachamento livre", 4, 10, 30, 120),
-        ex("Leg press", 3, 12, 80, 90),
-        ex("Cadeira extensora", 3, 15, 25),
-        ex("Mesa flexora", 3, 12, 20),
-        ex("Desenvolvimento com halteres", 3, 12, 10),
-        ex("Elevação lateral", 3, 15, 5),
-      ],
-    },
-  ];
-  const ago = (n) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() - n);
-    return localDate(d);
-  };
+  for (const key of ["history", "measurements", "goals"])
+    s[key] = s[key].filter((record) => record.demo !== true);
+  s.demo = false;
+  return s;
+}
+export function createState() {
   return {
     version: 1,
     profile: { name: "", dark: false, massUnit: "kg", lengthUnit: "cm" },
-    workouts,
-    history: [2, 4, 7, 9, 11, 14].map((n, i) => ({
-      id: uid(),
-      workoutId: workouts[i % 3].id,
-      name: workouts[i % 3].name,
-      group: workouts[i % 3].group,
-      date: ago(n),
-      duration: 2400 + i * 60,
-      notes: "Registro demonstrativo.",
-      demo: true,
-      exercises: workouts[i % 3].exercises.map((e) => ({
-        ...e,
-        done: true,
-        actualSets: Array.from({ length: e.sets }, () => ({
-          load: e.load,
-          reps: e.reps,
-          done: true,
-        })),
-        effort: "",
-        actualNotes: "",
-      })),
-    })),
-    measurements: [28, 21, 14, 7].map((n, i) => ({
-      id: uid(),
-      date: ago(n),
-      weight: 78 - i * 0.4,
-      waist: 86 - i * 0.5,
-      chest: 98 + i * 0.2,
-      arm: 33 + i * 0.1,
-      thigh: 56 + i * 0.2,
-      hip: 99 - i * 0.2,
-      demo: true,
-    })),
-    goals: [
-      {
-        id: uid(),
-        title: "Construir minha constância",
-        category: "total",
-        initial: 0,
-        target: 20,
-        current: 6,
-        deadline: "",
-        done: false,
-        demo: true,
-      },
-    ],
+    workouts: [],
+    history: [],
+    measurements: [],
+    goals: [],
     active: null,
-    demo: true,
+    demo: false,
   };
 }

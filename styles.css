@@ -17,6 +17,49 @@
   font-size: 15px;
   line-height: 1.5;
 }
+.mobile-install {
+  display: none;
+}
+@media (max-width: 760px) {
+  .mobile-install {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    margin-bottom: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  .mobile-install img {
+    display: block;
+    border-radius: 10px;
+  }
+  .mobile-install h2 {
+    font-size: 13px;
+    letter-spacing: 0;
+  }
+  .mobile-install p {
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .mobile-install .btn {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .mobile-install {
+    display: none;
+  }
+}
+html {
+  /* Fast taps without double-tap enlargement; pinch zoom stays available. */
+  touch-action: manipulation;
+}
 * {
   box-sizing: border-box;
 }
@@ -2097,6 +2140,18 @@ body:has(dialog[open]) {
 @media (max-width: 760px) {
   .mobile-brand > span {
     display: block;
+  }
+}
+/* Keep editable text comfortably sized on phones, including landscape.
+   Do not prevent user zoom: focused fields should not need auto-magnification. */
+@media (max-width: 1024px), (any-pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
+  .filters input,
+  .filters select,
+  .sets-table input[type="number"] {
+    font-size: 16px;
   }
 }
 body.dark {

@@ -30,6 +30,7 @@ try {
   blocked = true;
   state = C.createState();
 }
+state = C.prepareState(state);
 if (state.active) page = "session";
 function toast(text, error = false) {
   clearTimeout(timer);
@@ -117,15 +118,15 @@ const bottom = (label) =>
   `<p class="form-error" role="alert"></p><div class="form-actions">${U.btn("Cancelar", "close")}<button class="btn primary" type="submit">${label}</button></div>`;
 function exerciseForm(e, i) {
   const unit = state.profile.massUnit;
-  return `<section class="exercise-editor" data-id="${U.esc(e.id)}"><header><h3>Exercício ${i + 1}</h3><button type="button" class="icon-btn" data-action="remove-exercise" aria-label="Remover exercício ${i + 1}">${U.icon("trash")}</button></header><div class="form-grid"><div class="wide">${txt("exerciseName", "Nome do exercício", e.name)}</div>${num("sets", "Séries", e.sets, 1, 30, "1")}${num("reps", "Repetições planejadas", e.reps, 1, 1000, "1")}${num("load", `Carga planejada (${unit})`, Math.round(C.toDisplay(e.load, unit) * 10) / 10, 0, C.toDisplay(2000, unit))}${num("rest", "Descanso (segundos)", e.rest, 0, 3600, "1")}<label class="field wide">Observações do exercício<textarea name="exerciseNotes" maxlength="2000">${U.esc(e.notes)}</textarea></label></div></section>`;
+  return `<section class="exercise-editor" data-id="${U.esc(e.id)}"><header><h3>Exercício ${i + 1}</h3><button type="button" class="icon-btn" data-action="remove-exercise" aria-label="Remover exercício ${i + 1}">${U.icon("trash")}</button></header><div class="form-grid"><div class="wide">${txt("exerciseName", "Nome do exercício", e.name)}</div>${num("sets", "Séries", e.sets, 1, 30, "1")}${num("reps", "Repetições planejadas", e.reps, 1, 1000, "1")}${num("load", `Carga planejada (${unit})`, e.load === "" ? "" : Math.round(C.toDisplay(e.load, unit) * 10) / 10, 0, C.toDisplay(2000, unit))}${num("rest", "Descanso (segundos)", e.rest, 0, 3600, "1")}<label class="field wide">Observações do exercício<textarea name="exerciseNotes" maxlength="2000">${U.esc(e.notes)}</textarea></label></div></section>`;
 }
 const newExercise = () => ({
   id: C.uid(),
   name: "",
-  sets: 3,
-  reps: 12,
-  load: 0,
-  rest: 60,
+  sets: "",
+  reps: "",
+  load: "",
+  rest: "",
   notes: "",
 });
 function workoutForm(id) {
@@ -139,7 +140,7 @@ function workoutForm(id) {
   };
   show(
     id ? "Editar treino" : "Novo treino",
-    `<form id="workout-form"><div class="form-grid">${txt("name", "Nome do treino", w.name)}${txt("group", "Grupo muscular", w.group, false)}<div class="wide"><p class="small mb">Dias da semana</p><div class="day-picker">${U.days.map((d, i) => `<label><input type="checkbox" name="day" value="${i}" ${w.days.includes(i) ? "checked" : ""}><span>${d}</span></label>`).join("")}</div><p class="helper">Não marcar dias = frequência livre.</p></div><label class="field wide">Observações do treino<textarea name="notes" maxlength="2000">${U.esc(w.notes)}</textarea></label></div><div class="form-section-title"><h3>Exercícios</h3><span class="small muted">Na ordem do treino</span></div><div id="exercise-editors">${w.exercises.map(exerciseForm).join("")}</div>${U.btn("Adicionar exercício", "add-exercise", "plus", "full mt")}${bottom("Salvar treino")}</form>`,
+    `<form id="workout-form"><p class="helper mb">Preencha seu plano conforme a orientação do seu professor. Para exercícios sem carga externa, informe 0 na carga.</p><div class="form-grid">${txt("name", "Nome do treino", w.name)}${txt("group", "Grupo muscular", w.group, false)}<div class="wide"><p class="small mb">Dias da semana</p><div class="day-picker">${U.days.map((d, i) => `<label><input type="checkbox" name="day" value="${i}" ${w.days.includes(i) ? "checked" : ""}><span>${d}</span></label>`).join("")}</div><p class="helper">Não marcar dias = frequência livre.</p></div><label class="field wide">Observações do treino<textarea name="notes" maxlength="2000">${U.esc(w.notes)}</textarea></label></div><div class="form-section-title"><h3>Exercícios</h3><span class="small muted">Na ordem do treino</span></div><div id="exercise-editors">${w.exercises.map(exerciseForm).join("")}</div>${U.btn("Adicionar exercício", "add-exercise", "plus", "full mt")}${bottom("Salvar treino")}</form>`,
     true,
   );
   $("#workout-form").onsubmit = (e) => {
@@ -567,7 +568,11 @@ function goalUnit(category) {
 function goalFields(g) {
   const u = goalUnit(g.category),
     value = (v) =>
-      u === "treinos" ? v : Math.round(C.toDisplay(v, u) * 100) / 100;
+      v === ""
+        ? ""
+        : u === "treinos"
+          ? v
+          : Math.round(C.toDisplay(v, u) * 100) / 100;
   return `<div class="form-grid">${num("initial", `Valor inicial (${u})`, value(g.initial), 0, C.toDisplay(10000, u), u === "treinos" ? "1" : ".01")}${num("target", `Valor desejado (${u})`, value(g.target), 0, C.toDisplay(10000, u), u === "treinos" ? "1" : ".01")}${num("current", `Valor atual (${u})`, value(g.current), 0, C.toDisplay(10000, u), u === "treinos" ? "1" : ".01")}<label class="field">Prazo (opcional)<input type="date" name="deadline" value="${U.esc(g.deadline)}"></label></div>`;
 }
 function goalForm(id) {
@@ -575,9 +580,9 @@ function goalForm(id) {
     id: C.uid(),
     title: "",
     category: "total",
-    initial: 0,
-    target: 20,
-    current: 0,
+    initial: "",
+    target: "",
+    current: "",
     deadline: "",
     done: false,
   };
@@ -592,13 +597,13 @@ function goalForm(id) {
       )
       .join(
         "",
-      )}</select></label></div><div id="goal-values">${goalFields(g)}</div><p class="helper">Atualize o valor atual para acompanhar seu progresso. Para medidas e cargas, especifique no título (ex.: cintura ou supino).</p>${bottom("Salvar meta")}</form>`,
+      )}</select></label></div><div id="goal-values">${goalFields(g)}</div><p class="helper">Atualize o valor atual para acompanhar seu progresso. Para metas de carga ou medida, informe no título o exercício ou a parte do corpo.</p>${bottom("Salvar meta")}</form>`,
   );
   $('[name="category"]', modal).onchange = (e) => {
     $("#goal-values").innerHTML = goalFields({
-      initial: 0,
-      target: ["weight", "load", "measure"].includes(e.target.value) ? 80 : 3,
-      current: 0,
+      initial: "",
+      target: "",
+      current: "",
       deadline: $('[name="deadline"]', modal)?.value || "",
       category: e.target.value,
     });
@@ -731,23 +736,6 @@ async function extra(a, id) {
     case "import":
       $("#import-file").click();
       break;
-    case "clear-demo":
-      confirm(
-        "Remover dados de exemplo?",
-        "Somente o histórico, medidas e metas demonstrativos serão removidos. Seus registros pessoais e os planos de treino serão mantidos.",
-        "Remover exemplos",
-        () => {
-          const ok = commit((s) => {
-            s.history = s.history.filter((x) => !x.demo);
-            s.measurements = s.measurements.filter((x) => !x.demo);
-            s.goals = s.goals.filter((x) => !x.demo);
-            s.demo = false;
-          });
-          if (ok) toast("Exemplos removidos. Agora é com você.");
-          return ok;
-        },
-      );
-      break;
     case "reset":
       show(
         "Apagar todos os dados?",
@@ -804,7 +792,7 @@ $("#import-file").onchange = async (e) => {
   if (!file) return;
   try {
     if (file.size > 5000000) throw Error("O backup deve ter no máximo 5 MB.");
-    const imported = C.parseBackup(await file.text());
+    const imported = C.prepareState(C.parseBackup(await file.text()));
     confirm(
       "Restaurar backup?",
       `Este arquivo contém ${imported.workouts.length} treinos, ${imported.history.length} sessões e ${imported.measurements.length} registros de medidas. Todos os dados atuais serão substituídos, inclusive o treino em andamento. Exporte um backup antes de continuar.`,

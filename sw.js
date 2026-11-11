@@ -1,6 +1,6 @@
 /* Increment the version whenever a shell file changes. No personal data is cached. */
 const CACHE_PREFIX = "meu-treino-";
-const CACHE_NAME = `${CACHE_PREFIX}v2`;
+const CACHE_NAME = `${CACHE_PREFIX}v5`;
 const SHELL = [
   "./",
   "./index.html",
